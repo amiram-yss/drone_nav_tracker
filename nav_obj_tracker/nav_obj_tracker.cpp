@@ -4,6 +4,8 @@
 #include <iostream>
 #include <opencv2/opencv.hpp>
 #include "NavTracker.h"
+#include <conio.h> 
+
 
 int main()
 {
@@ -20,6 +22,7 @@ int main()
     Mat img;
     for (size_t i = initIndex; i > 538; i--)
     {
+        system("cls");
         img = imread(img_add_prefix + std::to_string(i) + ".jpg");
         nav.NextFrame(img);
         nav.ShowImgWithFeatures();
