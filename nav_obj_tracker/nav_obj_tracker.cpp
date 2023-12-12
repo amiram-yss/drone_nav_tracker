@@ -11,7 +11,7 @@ int main()
 {
     std::cout << "Hello World!\n";
     std::string img_add_prefix = "C:\\Users\\Amiram Yassif\\Documents\\pics\\frames 1b\\frameNo";
-    int initIndex = 2300; // 538;
+    int initIndex = 2307; // 538;
     cv::Mat initImg = imread(img_add_prefix + std::to_string(initIndex) + ".jpg");
     circle(initImg, Point(0, 0), 8, Scalar(255, 0, 0), 3);
     //imshow("", initImg);
