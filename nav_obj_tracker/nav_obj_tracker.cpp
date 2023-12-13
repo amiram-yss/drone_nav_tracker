@@ -10,8 +10,8 @@
 int main()
 {
     std::cout << "Hello World!\n";
-    std::string img_add_prefix = "C:\\Users\\Amiram Yassif\\Documents\\pics\\frames 1b\\frameNo";
-    int initIndex = 2307; // 538;
+    std::string img_add_prefix = "C:\\Users\\amira\\OneDrive\\Desktop\\harris corner detection algorithm\\pics\\frames 1b\\frameNo";
+    int initIndex = 538;
     cv::Mat initImg = imread(img_add_prefix + std::to_string(initIndex) + ".jpg");
     circle(initImg, Point(0, 0), 8, Scalar(255, 0, 0), 3);
     //imshow("", initImg);
@@ -20,7 +20,7 @@ int main()
     NavTracker nav(initImg, 20.);
     nav.ShowImgWithFeatures();
     Mat img;
-    for (size_t i = initIndex; i > 538; i--)
+    for (size_t i = initIndex; i < 2640; i++)
     {
         system("cls");
         img = imread(img_add_prefix + std::to_string(i) + ".jpg");

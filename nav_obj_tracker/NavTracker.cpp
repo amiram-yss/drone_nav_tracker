@@ -40,14 +40,14 @@ void NavTracker::NextFrame(Mat& next_image) {
 
     current_img = gray_next_image.clone();
     
-    //std::cout << "Frame points: " << std::endl;
-    //for (auto p : this->feature_points)
-    //    std::cout << p << std::endl;
-
     for (size_t i = 0; i < removed_ctr; i++)
     {
         //std::cout << "iter " << i << std::endl;
+        auto start = std::chrono::high_resolution_clock::now();
         CreateNewPoint();
+        auto stop = std::chrono::high_resolution_clock::now();
+		auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(stop - start);
+        std::cout<<"CreateNewPoint() took "<<duration.count()<<" milliseconds"<<std::endl;
     }
 }
 
@@ -65,20 +65,26 @@ void NavTracker::ShowImgWithFeatures() const
     cv::waitKey();
 }
 
+cv::Mat NavTracker::GetImgWithFeatures() const
+{
+    Mat cpy = this->current_img.clone();
+    cvtColor(cpy, cpy, COLOR_GRAY2BGR);
+    for (auto p : this->feature_points)
+        cv::circle(cpy, p, 8, Scalar(0, 0, 255), 2);
+    return cpy;
+}
+
 void NavTracker::CreateNewPoint()
 {
-#pragma region setup
-    std::unique(this->feature_points.begin(), this->feature_points.end());
-    // search in lower half and higher half x vals
+    // support for 4 tiles only
     int mid_x = current_img.cols / 2;
     int mid_y = current_img.rows / 2;
-
+    // pick ref pts only in 2/3 of each dim
     int roi_width = (mid_x * 2) / 3;
     int roi_height = (mid_y * 2) / 3;
-
+    // count #of points in each half. that's how the area to add a new point is selected.
     int ctr_pts_dn = 0,
         ctr_pts_rt = 0;
-
     for (auto p : feature_points) {
         if (p.y > mid_y)
             ++ctr_pts_dn;
@@ -89,91 +95,35 @@ void NavTracker::CreateNewPoint()
         else
             --ctr_pts_rt;
     }
-
+    // pick roi for feature pt insertions
     int roi_x = ctr_pts_rt > 0 ? mid_x - roi_width : mid_x;
     int roi_y = ctr_pts_dn > 0 ? mid_y - roi_height : mid_y;
     Rect roi_region(roi_x, roi_y, roi_width, roi_height);
-    Mat roi = this->current_img(roi_region);
-    //equalizeHist(roi, roi);
-    
+    Mat roi = this->current_img(roi_region);  
     std::vector<Point2f> feature_result;
     int max_min = 0;
     Point2f max_min_point;
-#pragma endregion
     goodFeaturesToTrack(roi, feature_result, 10, 0.01, 25. /*maybe more?*/, noArray(), 27, true, 0.04);
-
-	//Mat animation = this->current_img.clone();
-
+    // pick best point in roi
     for (auto relative_p : feature_result) {
-        // dbg
-   /*     animation = this->current_img.clone();
-        cvtColor(animation, animation, COLOR_GRAY2BGR);
-        for (auto p1 : feature_points)
-            cv::circle(animation, p1, 8, Scalar(0, 0, 255), 2);*/
-        // end dbg
-
         Point2f p(relative_p.x + roi_x, relative_p.y + roi_y);
-        //cv::circle(animation, p, 8, Scalar(250, 50, 50), 2);
-        std::cout << "\x1b[1m" << p << "\x1b[0m" << std::endl;
-
         bool changed = false;
         int min = INT_MAX;
-
+        // find min dist to existing points
         for (auto p2 : this -> feature_points) {
-            //Point2f p2c(p2.x + roi_x, p2.y + roi_y);
-            //circle(animation, p2, 8, Scalar(0, 0, 255), 2);
             int dist_sqrd = pow(p.x - p2.x, 2) + pow(p.y - p2.y, 2);
-            //std::cout << "dist: " << p << " to " << p2 << ": " << dist_sqrd << std::endl;
-            //std::cout << "DIST CALC to " << p << ": (" << p.x << " - " << p2.x << ")^2 + (" << p.y << " - " << p2.y << ")^2 = " << dist_sqrd << std::endl;
             if (dist_sqrd < min) {
                 changed = true;
                 min = pow(p.x - p2.x, 2) + pow(p.y - p2.y, 2);
-                //circle(animation, p2, 8, Scalar(100, 255, 100), 4);
-                //std::cout << p << " - calced min: " << min << std::endl;
             }
-   /*         circle(animation, p2, 8, Scalar(0, 255, 0), 2);
-            imshow("animation", animation);
-            waitKey();*/
         }
         if (!changed)
             continue;
-        //cv::circle(animation, p, 8, Scalar(100,50,50), 2);
-        if (min < max_min) {
-            //imshow("distance selection animation", animation);
-            //waitKey();
+        if (min < max_min)
             continue;
-        }
-        //cv::circle(animation, p, 8, Scalar(255, 100, 50), 2);
-        //std::cout << "cur max min: " << max_min << ", new max min: " << min << std::endl;
+        // if min is bigger than max_min, update max_min and max_min_point
         max_min = min;
         max_min_point = p;
-        //cv::imshow("distance selection animation", animation);
-        //cv::waitKey();
     }
-
-    std::cout << "DECISION: " << max_min_point << std::endl;
-
-    //if (ctr_pts_rt > 0)
-    //max_min_point.x += roi_x;
-    //if (ctr_pts_dn > 0)
-    //max_min_point.y += roi_y;
-    std::cout << "vector size: " << this->feature_points.size() << std::endl;
     this->feature_points.push_back(max_min_point);
-    //std::cout << this->feature_points.size() << std::endl;
-
-    //dbg
-    //Mat cpy;
-    //cpy = this->current_img.clone();
-    //cvtColor(cpy, cpy, COLOR_GRAY2BGR);
-    //rectangle(cpy, roi_region, Scalar(100,100,50), 2);
-    //for (auto p : feature_result) {
-    //    Point2f calP(p.x + roi_x, p.y + roi_y);
-    //    circle(cpy, calP, 8, Scalar(255, 0, 0), 2);
-    //}
-    //for (auto p : this->feature_points)
-    //    circle(cpy, p, 8, Scalar(0, 0, 255), 2);
-    //circle(cpy, max_min_point, 8, Scalar(0, 255, 0), 2);
-    //imshow("new point view", cpy);
-    //waitKey();
-    ///
 }
